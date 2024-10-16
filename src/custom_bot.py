@@ -10,6 +10,14 @@ from keras.callbacks import ModelCheckpoint
 from dotenv import load_dotenv
 import os
 
+from lumibot.brokers import Alpaca
+from lumibot.backtesting import YahooDataBacktesting
+from lumibot.strategies.strategy import Strategy
+from lumibot.traders import Trader
+from datetime import datetime
+from alpaca_trade_api import REST
+from timedelta import Timedelta
+
 # from sklearn.ensemble import RandomForestClassifier
 #from datetime import datetime
 # from sklearn.metrics import accuracy_score
@@ -21,6 +29,13 @@ load_dotenv()
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
 ALPACA_API_SECRET = os.getenv("ALPACA_API_SECRET")
 ALPACA_BASE_URL = "https://paper-api.alpaca.markets/v2"
+
+ALPACA_CREDS = {
+    "API_KEY":ALPACA_API_KEY,
+    "API_SECRET":ALPACA_API_SECRET,
+    "PAPER": True
+}
+
 api = tradeapi.REST(ALPACA_API_KEY , ALPACA_API_SECRET, ALPACA_BASE_URL)
 
 # Define the start and end date for the historical data
@@ -46,47 +61,59 @@ df = pd.DataFrame([{
     'volume': bar.v
 } for bar in bars])
 
+
+def calculate_rsi(data, window=14):
+    # Calculate the difference in prices between consecutive days
+    delta = data['close'].diff()
+
+    # Separate gains and losses
+    gain = (delta.where(delta > 0, 0))
+    loss = (-delta.where(delta < 0, 0))
+
+    # Calculate the rolling average of gains and losses
+    avg_gain = gain.rolling(window=window, min_periods=14).mean()
+    avg_loss = loss.rolling(window=window, min_periods=14).mean()
+
+    # Calculate the relative strength (RS)
+    rs = avg_gain / avg_loss
+
+    # Calculate RSI using the RS
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi
+
+
 # Feature engineering
 df['price_change'] = df['close'].pct_change()
 df['moving_avg'] = df['close'].rolling(window=10).mean()
+df['RSI'] = calculate_rsi(df)
 
 # Label generation: Predict if the price will go up (1) or down (0)
 df['future_price'] = df['close'].shift(-1)
 df['target'] = (df['future_price'] > df['close']).astype(int)
 
 # Drop NaN values
-df = df[['price_change', 'moving_avg', 'target']].dropna()
+df = df[['price_change', 'moving_avg', 'RSI', 'target']].dropna()
 
 # Split data into features and target
-X = df[['price_change', 'moving_avg']].values
+X = df[['price_change', 'moving_avg', 'RSI']].values
 y = df['target'].values
 
 # Scale the features to [0, 1]
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Create sequences for LSTM input
-def create_sequences(X, y, time_steps=1):
-    Xs, ys = [], []
-    for i in range(len(X) - time_steps):
-        Xs.append(X[i:(i + time_steps)])
-        ys.append(y[i + time_steps])
-    return np.array(Xs), np.array(ys)
-
-# Set time_steps for LSTM
-time_steps = 5  # Number of previous days to consider
-X_seq, y_seq = create_sequences(X_scaled, y, time_steps)
-
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X_seq, y_seq, test_size=0.2, shuffle=False)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, shuffle=False)
 
-# Build the LSTM model
+# Build a basic ANN model
 model = Sequential()
-model.add(LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
+model.add(Dense(128, activation='relu', input_shape=(X_train.shape[1],)))  # First hidden layer
+model.add(Dropout(0.2))  # Regularization
+model.add(Dense(64, activation='relu'))  # Second hidden layer
 model.add(Dropout(0.2))
-model.add(LSTM(50, return_sequences=False))
-model.add(Dropout(0.2))
-model.add(Dense(1, activation='sigmoid'))  # Sigmoid for binary classification
+model.add(Dense(1, activation='sigmoid'))  # Output layer for binary classification
+
 
 # Compile the model
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -111,7 +138,7 @@ y_pred = (best_model.predict(X_test) > 0.5).astype(int)
 
 # Evaluate accuracy
 accuracy = np.mean(y_pred.flatten() == y_test)
-print(f'Accuracy: {accuracy:.2f}')
+print(f'Best Model Accuracy: {accuracy:.2f}')
 
 # Plotting the training history
 plt.figure(figsize=(12, 6))
