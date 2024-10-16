@@ -30,7 +30,7 @@ ALPACA_CREDS = {
 
 # Define your trading strategy
 class MLTrader(Strategy):
-    def initialize(self, symbol="SPY", cash_at_risk=0.5, model_path="best_model.keras"):
+    def initialize(self, symbol="QQQ", cash_at_risk=0.5, model_path="best_model.keras"):
         self.symbol = symbol
         self.cash_at_risk = cash_at_risk
         self.model = load_model(model_path)  # Load the trained model
@@ -48,8 +48,8 @@ class MLTrader(Strategy):
     def get_dates(self): 
         today = self.get_datetime()
         three_days_prior = today - Timedelta(days=3)
-        thirty_days_prior = today - Timedelta(days=30)
-        return today.strftime('%Y-%m-%d'), three_days_prior.strftime('%Y-%m-%d'), thirty_days_prior.strftime('%Y-%m-%d')
+        two_hundred_days_prior = today - Timedelta(days=200)
+        return today.strftime('%Y-%m-%d'), three_days_prior.strftime('%Y-%m-%d'), two_hundred_days_prior.strftime('%Y-%m-%d')
 
     def get_sentiment(self): 
         today, three_days_prior, thirty_days_prior = self.get_dates()
@@ -65,10 +65,10 @@ class MLTrader(Strategy):
     def on_trading_iteration(self):
         # Get current cash, price, and size the position
         cash, last_price, quantity = self.position_sizing()
-        today, three_days_prior, thirty_days_prior = self.get_dates()
+        today, three_days_prior, two_hundred_days_prior = self.get_dates()
 
         # Fetch the latest stock data (use get_bars to fetch historical bars)
-        bars = self.api.get_bars(self.symbol, '1D', limit=1000, start=thirty_days_prior, end=today)  # Fetch latest 30 days
+        bars = self.api.get_bars(self.symbol, '1D', limit=1000, start=two_hundred_days_prior, end=today)  # Fetch latest 200 days
 
         df = pd.DataFrame([{
             'time': bar.t,
@@ -81,11 +81,12 @@ class MLTrader(Strategy):
 
         # Feature engineering for model prediction (calculate moving average, RSI, etc.)
         df['price_change'] = df['close'].pct_change()
-        df['moving_avg'] = df['close'].rolling(window=10).mean()
+        # df['moving_avg'] = df['close'].rolling(window=10).mean()
+        df['200EMA'] = df['close'].ewm(span=200, adjust=False).mean()
         df['RSI'] = calculate_rsi(df)
 
         # Prepare input data for prediction
-        df = df[['price_change', 'moving_avg', 'RSI']].dropna()
+        df = df[['price_change', '200EMA', 'RSI']].dropna()
         X = df.values
         X_scaled = self.scaler.fit_transform(X)
 
@@ -125,19 +126,19 @@ class MLTrader(Strategy):
                     self.last_trade = "sell"
 
 # Backtesting with YahooDataBacktesting
-start_date = datetime(2024, 9, 1)
+start_date = datetime(2024, 1, 1)
 end_date = datetime(2024, 10, 1)
 broker = Alpaca(ALPACA_CREDS)
 
 strategy = MLTrader(
     name='MLTrader',
     broker=broker,
-    parameters={"symbol": "SPY", "cash_at_risk": 0.5, "model_path": "best_model.keras"}
+    parameters={"symbol": "QQQ", "cash_at_risk": 0.5, "model_path": "best_model.keras"}
 )
 
 strategy.backtest(
     YahooDataBacktesting,
     start_date,
     end_date,
-    parameters={"symbol": "SPY", "cash_at_risk": 0.5}
+    parameters={"symbol": "QQQ", "cash_at_risk": 0.5}
 )
