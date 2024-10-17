@@ -30,7 +30,7 @@ ALPACA_CREDS = {
 
 # Define your trading strategy
 class MLTrader(Strategy):
-    def initialize(self, symbol="QQQ", cash_at_risk=0.5, model_path="best_model.keras"):
+    def initialize(self, symbol="SPY", cash_at_risk=0.5, model_path="best_model.keras"):
         self.symbol = symbol
         self.cash_at_risk = cash_at_risk
         self.model = load_model(model_path)  # Load the trained model
@@ -83,10 +83,11 @@ class MLTrader(Strategy):
         df['price_change'] = df['close'].pct_change()
         # df['moving_avg'] = df['close'].rolling(window=10).mean()
         df['200EMA'] = df['close'].ewm(span=200, adjust=False).mean()
+        df['MACD Line'] = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
         df['RSI'] = calculate_rsi(df)
 
         # Prepare input data for prediction
-        df = df[['price_change', '200EMA', 'RSI']].dropna()
+        df = df[['price_change', '200EMA', 'MACD Line', 'RSI']].dropna()
         X = df.values
         X_scaled = self.scaler.fit_transform(X)
 
@@ -98,7 +99,7 @@ class MLTrader(Strategy):
 
             # Trading logic based on prediction
             if cash > last_price:  # Ensure we have enough cash to trade
-                if prediction == 1 or sentiment == "positive":  # Buy signal
+                if prediction == 1 or (sentiment == "positive" and probability > 0.5):  # Buy signal
                     if self.last_trade == "sell":
                         self.sell_all()  # Clear previous short position
                     order = self.create_order(
@@ -111,7 +112,7 @@ class MLTrader(Strategy):
                     )
                     self.submit_order(order)
                     self.last_trade = "buy"
-                elif prediction == 0 or sentiment == "negative":  # Sell signal
+                elif prediction == 0 or (sentiment == "negative" and probability > 0.5):  # Sell signal
                     if self.last_trade == "buy":
                         self.sell_all()  # Clear previous long position
                     order = self.create_order(
@@ -126,19 +127,19 @@ class MLTrader(Strategy):
                     self.last_trade = "sell"
 
 # Backtesting with YahooDataBacktesting
-start_date = datetime(2024, 1, 1)
-end_date = datetime(2024, 10, 1)
+start_date = datetime(2024, 10, 1)
+end_date = datetime(2024, 10, 15)
 broker = Alpaca(ALPACA_CREDS)
 
 strategy = MLTrader(
     name='MLTrader',
     broker=broker,
-    parameters={"symbol": "QQQ", "cash_at_risk": 0.5, "model_path": "best_model.keras"}
+    parameters={"symbol": "SPY", "cash_at_risk": 0.5, "model_path": "best_model.keras"}
 )
 
 strategy.backtest(
     YahooDataBacktesting,
     start_date,
     end_date,
-    parameters={"symbol": "QQQ", "cash_at_risk": 0.5}
+    parameters={"symbol": "SPY", "cash_at_risk": 0.5}
 )

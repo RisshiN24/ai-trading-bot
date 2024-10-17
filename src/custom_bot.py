@@ -44,7 +44,7 @@ end_date = '2024-01-01'    # Adjust as needed
 
 # Fetch historical stock data using get_bars with a time range
 bars = api.get_bars(
-    'QQQ',                # Stock symbol
+    'SPY',                # Stock symbol
     '1D',                  # Timeframe (daily bars)
     limit=1000,            # Max number of bars to retrieve
     start=start_date,      # Start date
@@ -87,6 +87,7 @@ def calculate_rsi(data, window=14):
 df['price_change'] = df['close'].pct_change()
 # df['moving_avg'] = df['close'].rolling(window=10).mean()
 df['200EMA'] = df['close'].ewm(span=200, adjust=False).mean()
+df['MACD Line'] = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
 df['RSI'] = calculate_rsi(df)
 
 # Label generation: Predict if the price will go up (1) or down (0)
@@ -94,10 +95,10 @@ df['future_price'] = df['close'].shift(-1)
 df['target'] = (df['future_price'] > df['close']).astype(int)
 
 # Drop NaN values
-df = df[['price_change', '200EMA', 'RSI', 'target']].dropna()
+df = df[['price_change', '200EMA', 'RSI', 'MACD Line', 'target']].dropna()
 
 # Split data into features and target
-X = df[['price_change', '200EMA', 'RSI']].values
+X = df[['price_change', '200EMA', 'MACD Line', 'RSI']].values
 y = df['target'].values
 
 # Scale the features to [0, 1]
