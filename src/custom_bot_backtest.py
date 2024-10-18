@@ -52,7 +52,7 @@ class MLTrader(Strategy):
         return today.strftime('%Y-%m-%d'), three_days_prior.strftime('%Y-%m-%d'), two_hundred_days_prior.strftime('%Y-%m-%d')
 
     def get_sentiment(self): 
-        today, three_days_prior, thirty_days_prior = self.get_dates()
+        today, three_days_prior, two_hundred_days_prior = self.get_dates()
 
         news = self.api.get_news(symbol=self.symbol, 
                                  start=three_days_prior, 
@@ -62,11 +62,8 @@ class MLTrader(Strategy):
         probability, sentiment = estimate_sentiment(news)
         return probability, sentiment
     
-    def on_trading_iteration(self):
-        # Get current cash, price, and size the position
-        cash, last_price, quantity = self.position_sizing()
+    def get_prediction(self):
         today, three_days_prior, two_hundred_days_prior = self.get_dates()
-
         # Fetch the latest stock data (use get_bars to fetch historical bars)
         bars = self.api.get_bars(self.symbol, '1D', limit=1000, start=two_hundred_days_prior, end=today)  # Fetch latest 200 days
 
@@ -95,39 +92,48 @@ class MLTrader(Strategy):
         if len(X_scaled) > 0:
             prediction = self.model.predict(X_scaled[-1].reshape(1, -1))  # Predict on the last available data
             prediction = (prediction > 0.5).astype(int)
-            probability, sentiment = self.get_sentiment()
+            return prediction
+            
+    
+    def on_trading_iteration(self):
+        # Get current cash, price, and size the position
+        cash, last_price, quantity = self.position_sizing()
+        today, three_days_prior, two_hundred_days_prior = self.get_dates()
 
-            # Trading logic based on prediction
-            if cash > last_price:  # Ensure we have enough cash to trade
-                if prediction == 1 or (sentiment == "positive" and probability > 0.5):  # Buy signal
-                    if self.last_trade == "sell":
-                        self.sell_all()  # Clear previous short position
-                    order = self.create_order(
-                        self.symbol,
-                        quantity,
-                        "buy",
-                        type="bracket",
-                        take_profit_price=last_price * 1.20,
-                        stop_loss_price=last_price * 0.95
-                    )
-                    self.submit_order(order)
-                    self.last_trade = "buy"
-                elif prediction == 0 or (sentiment == "negative" and probability > 0.5):  # Sell signal
-                    if self.last_trade == "buy":
-                        self.sell_all()  # Clear previous long position
-                    order = self.create_order(
-                        self.symbol,
-                        quantity,
-                        "sell",
-                        type="bracket",
-                        take_profit_price=last_price * 0.8,
-                        stop_loss_price=last_price * 1.05
-                    )
-                    self.submit_order(order)
-                    self.last_trade = "sell"
+        prediction = self.get_prediction()
+        probability, sentiment = self.get_sentiment()
+
+        # Trading logic based on prediction
+        if cash > last_price:  # Ensure we have enough cash to trade
+            if prediction == 1 or (sentiment == "positive" and probability > 0.5):  # Buy signal
+                if self.last_trade == "sell":
+                    self.sell_all()  # Clear previous short position
+                order = self.create_order(
+                    self.symbol,
+                    quantity,
+                    "buy",
+                    type="bracket",
+                    take_profit_price=last_price * 1.20,
+                    stop_loss_price=last_price * 0.95
+                )
+                self.submit_order(order)
+                self.last_trade = "buy"
+            elif prediction == 0 or (sentiment == "negative" and probability > 0.5):  # Sell signal
+                if self.last_trade == "buy":
+                    self.sell_all()  # Clear previous long position
+                order = self.create_order(
+                    self.symbol,
+                    quantity,
+                    "sell",
+                    type="bracket",
+                    take_profit_price=last_price * 0.8,
+                    stop_loss_price=last_price * 1.05
+                )
+                self.submit_order(order)
+                self.last_trade = "sell"
 
 # Backtesting with YahooDataBacktesting
-start_date = datetime(2024, 10, 1)
+start_date = datetime(2024, 9, 1)
 end_date = datetime(2024, 10, 15)
 broker = Alpaca(ALPACA_CREDS)
 

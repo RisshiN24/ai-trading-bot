@@ -111,9 +111,9 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 # Build a basic ANN model
 model = Sequential()
 model.add(Dense(128, activation='relu', input_shape=(X_train.shape[1],)))  # First hidden layer
-model.add(Dropout(0.2))  # Regularization
+model.add(Dropout(0.4))  # Regularization
 model.add(Dense(64, activation='relu'))  # Second hidden layer
-model.add(Dropout(0.2))
+model.add(Dropout(0.4))
 model.add(Dense(1, activation='sigmoid'))  # Output layer for binary classification
 
 
@@ -129,11 +129,18 @@ checkpoint = ModelCheckpoint(
     verbose=1  # Print messages when saving the model
 )
 
-# Train the model with the checkpoint
-history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, batch_size=32, callbacks=[checkpoint])
+# Check if the model file already exists
+if os.path.exists('best_model.keras'):
+    print("Model already exists. Loading pre-trained model.")
+    best_model = load_model('best_model.keras')  # Load the pre-trained model
+else:
+    print("No pre-trained model found. Training a new model.")
 
-# Load the best model
-best_model = load_model('best_model.keras')
+    # Train the model with the checkpoint
+    history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, batch_size=32, callbacks=[checkpoint])
+
+    # Load the best model
+    best_model = load_model('best_model.keras')
 
 # Make predictions
 y_pred = (best_model.predict(X_test) > 0.5).astype(int)
@@ -141,26 +148,3 @@ y_pred = (best_model.predict(X_test) > 0.5).astype(int)
 # Evaluate accuracy
 accuracy = np.mean(y_pred.flatten() == y_test)
 print(f'Best Model Accuracy: {accuracy:.2f}')
-
-# Plotting the training history
-plt.figure(figsize=(12, 6))
-
-# Plot training & validation loss values
-plt.subplot(1, 2, 1)
-plt.plot(history.history['loss'], label='Train Loss')
-plt.plot(history.history['val_loss'], label='Validation Loss')
-plt.title('Model Loss')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.legend(loc='upper right')
-
-# Plot training & validation accuracy values
-plt.subplot(1, 2, 2)
-plt.plot(history.history['accuracy'], label='Train Accuracy')
-plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-plt.title('Model Accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(loc='lower right')
-
-plt.show()
