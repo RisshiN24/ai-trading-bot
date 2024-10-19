@@ -105,7 +105,7 @@ class MLTrader(Strategy):
 
         # Trading logic based on prediction
         if cash > last_price:  # Ensure we have enough cash to trade
-            if prediction == 1 or (sentiment == "positive" and probability > 0.5):  # Buy signal
+            if prediction == 1 or (sentiment == "positive" and probability > 0.75):  # Buy signal
                 if self.last_trade == "sell":
                     self.sell_all()  # Clear previous short position
                 order = self.create_order(
@@ -118,7 +118,7 @@ class MLTrader(Strategy):
                 )
                 self.submit_order(order)
                 self.last_trade = "buy"
-            elif prediction == 0 or (sentiment == "negative" and probability > 0.5):  # Sell signal
+            elif prediction == 0 or (sentiment == "negative" and probability > 0.75):  # Sell signal
                 if self.last_trade == "buy":
                     self.sell_all()  # Clear previous long position
                 order = self.create_order(
@@ -134,7 +134,7 @@ class MLTrader(Strategy):
 
 # Backtesting with YahooDataBacktesting
 start_date = datetime(2024, 9, 1)
-end_date = datetime(2024, 10, 15)
+end_date = datetime(2024, 10, 1)
 broker = Alpaca(ALPACA_CREDS)
 
 strategy = MLTrader(

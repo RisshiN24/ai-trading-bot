@@ -9,7 +9,6 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 from keras.callbacks import ModelCheckpoint
 from dotenv import load_dotenv
 import os
-
 from lumibot.brokers import Alpaca
 from lumibot.backtesting import YahooDataBacktesting
 from lumibot.strategies.strategy import Strategy
@@ -17,11 +16,6 @@ from lumibot.traders import Trader
 from datetime import datetime
 from alpaca_trade_api import REST
 from timedelta import Timedelta
-
-# from sklearn.ensemble import RandomForestClassifier
-#from datetime import datetime
-# from sklearn.metrics import accuracy_score
-# from xgboost import XGBClassifier
 
 load_dotenv()
 
@@ -61,7 +55,7 @@ df = pd.DataFrame([{
     'volume': bar.v
 } for bar in bars])
 
-
+# RSI calculation
 def calculate_rsi(data, window=14):
     # Calculate the difference in prices between consecutive days
     delta = data['close'].diff()
@@ -82,10 +76,8 @@ def calculate_rsi(data, window=14):
 
     return rsi
 
-
 # Feature engineering
 df['price_change'] = df['close'].pct_change()
-# df['moving_avg'] = df['close'].rolling(window=10).mean()
 df['200EMA'] = df['close'].ewm(span=200, adjust=False).mean()
 df['MACD Line'] = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
 df['RSI'] = calculate_rsi(df)
@@ -108,7 +100,7 @@ X_scaled = scaler.fit_transform(X)
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, shuffle=False)
 
-# Build a basic ANN model
+# ANN model
 model = Sequential()
 model.add(Dense(128, activation='relu', input_shape=(X_train.shape[1],)))  # First hidden layer
 model.add(Dropout(0.4))  # Regularization
@@ -116,11 +108,10 @@ model.add(Dense(64, activation='relu'))  # Second hidden layer
 model.add(Dropout(0.4))
 model.add(Dense(1, activation='sigmoid'))  # Output layer for binary classification
 
-
-# Compile the model
+# Compile
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Define the checkpoint callback
+# Checkpoint callback to save best model
 checkpoint = ModelCheckpoint(
     'best_model.keras',  # Path where to save the model
     monitor='val_accuracy',  # Metric to monitor
