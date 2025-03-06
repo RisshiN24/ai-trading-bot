@@ -2,14 +2,20 @@
 
 ## Project Description
 
-custom_bot.py: An ML/deep learning model (ANN) that is trained on SPY data. Features include RSI, 200EMA, MACD Line, and price change. If the model either predicts 1 (price will go up) or 0 (price will go down).
+This project is an AI-driven trading system that leverages machine learning and deep learning models to analyze historical market data and news sentiment. The system currently uses a feedforward neural network (ANN) trained on SPY data with technical indicators such as RSI, 200EMA, MACD Line, and price change. Trading decisions are made based on both the model's prediction and news sentiment analyzed via FinBERT.
 
-custom_bot_backtest.py: The code that allows us to backtest on the model we created in custom_bot.py. We also incorporate news sentiment into the trading logic, which is analyzed using FinBERT.
+**Files:**
+- **model.py:** Contains the code for data retrieval, feature engineering, model training, and evaluation. It builds the ML model using technical indicators and saves the best performing model.
+- **backtest.py:** Implements a custom trading strategy that uses the pre-trained ML model from model.py along with news sentiment analysis (via finbert_utils.py) to generate buy/sell signals. It is integrated with the Lumibot framework for backtesting the strategy.
+- **finbert_utils.py:** Provides utility functions to access and use the FinBERT model for sentiment analysis on financial news headlines.
 
-finbert_utils.py: The code in this file allows us to access the FinBERT model from Hugging Spaces and analyze the news headlines.
+## Future Improvements
 
-## Credits
+- **Live Trading Integration:** Enhance the system to support live trading, allowing the strategy to be deployed in a real-time trading environment.
+- **Model Experimentation:** Experiment with alternative models such as LSTM (Long Short-Term Memory) networks, which may be more appropriate for capturing temporal dependencies in market data.
+- **Advanced Feature Engineering:** Further improve feature engineering by exploring additional technical indicators and alternative data sources.
+- **Robust Error Handling & Logging:** Implement more robust error handling and logging mechanisms to ensure system reliability, especially in live trading scenarios.
 
-Thanks to Nicholas Renotte and his trading bot tutorial for inspiration and for the code in finbert_utils.py.
+## Acknowledgements
 
-The code in custom_bot.py and custom_bot_backtest.py is separate and builds on the code from the tutorial.
+Special thanks to Nicholas Renotte and his trading bot tutorial for the inspiration and for the code in finbert_utils.py. The implementations in model.py and backtest.py build upon the concepts presented in the tutorial while extending them with additional features and improvements.
