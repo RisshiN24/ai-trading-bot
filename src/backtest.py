@@ -11,7 +11,7 @@ from timedelta import Timedelta
 import os
 from dotenv import load_dotenv
 from sklearn.preprocessing import MinMaxScaler
-from custom_bot import calculate_rsi
+from model import calculate_rsi
 from finbert_utils import estimate_sentiment
 
 # Load environment variables (API keys, secrets, etc.)
