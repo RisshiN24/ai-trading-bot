@@ -1,18 +1,33 @@
+# Standard libraries
+import os
+from datetime import datetime
+
+# Environment variables
+from dotenv import load_dotenv
+
+# Data manipulation
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+
+# Trading and backtesting
+from alpaca_trade_api import REST
 from lumibot.brokers import Alpaca
 from lumibot.backtesting import YahooDataBacktesting
 from lumibot.strategies.strategy import Strategy
 from lumibot.traders import Trader
-from datetime import datetime
-from tensorflow.keras.models import load_model
-from alpaca_trade_api import REST
+
+# Time handling
 from timedelta import Timedelta
-import os
-from dotenv import load_dotenv
-from sklearn.preprocessing import MinMaxScaler
+
+# Machine Learning
+from tensorflow.keras.models import load_model
+
+# Custom modules
 from model import calculate_rsi
 from finbert_utils import estimate_sentiment
+
+#-----------------------------------------------------------#
 
 # Load environment variables (API keys, secrets, etc.)
 load_dotenv()

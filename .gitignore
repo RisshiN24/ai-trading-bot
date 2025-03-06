@@ -3,3 +3,4 @@
 /logs
 /src/__pycache__
 .env
+/src/debug.log

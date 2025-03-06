@@ -1,21 +1,25 @@
+# Standard libraries
+import os
+
+# Data manipulation and visualization
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# Trading API
 import alpaca_trade_api as tradeapi
+
+# Machine Learning
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from keras.callbacks import ModelCheckpoint
+
+# Environment variables
 from dotenv import load_dotenv
-import os
-from lumibot.brokers import Alpaca
-from lumibot.backtesting import YahooDataBacktesting
-from lumibot.strategies.strategy import Strategy
-from lumibot.traders import Trader
-from datetime import datetime
-from alpaca_trade_api import REST
-from timedelta import Timedelta
+
+#-----------------------------------------------------------#
 
 # Load environment variables for API keys
 load_dotenv()
