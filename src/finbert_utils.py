@@ -41,6 +41,6 @@ def estimate_sentiment(news: list) -> Tuple[float, str]:
 
 # Test the function when the script is run directly
 if __name__ == "__main__":
-    tensor, sentiment = estimate_sentiment(['Dow Jones Today: S&P 500 Rises to Record High as Stock Market Rally Continues'])
+    tensor, sentiment = estimate_sentiment(['Dow Jones Today: S&P 500 Falls Big, People Crying in the Streets'])
     print(tensor, sentiment)  # Print probability and sentiment label
     print("CUDA Available:", torch.cuda.is_available())  # Check if CUDA (GPU) is accessible
