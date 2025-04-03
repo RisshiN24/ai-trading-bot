@@ -52,7 +52,7 @@ class MLTrader(Strategy):
         two_hundred_days_prior = today - Timedelta(days=200)
         return today.strftime('%Y-%m-%d'), three_days_prior.strftime('%Y-%m-%d'), two_hundred_days_prior.strftime('%Y-%m-%d')
 
-    def get_prediction_and_sentiment(self):
+    def get_prediction(self):
         today, three_days_prior, two_hundred_days_prior = self.get_dates()
 
         # Fetch historical bars
@@ -73,7 +73,7 @@ class MLTrader(Strategy):
         headlines = [article.__dict__["_raw"].get("headline", "") for article in news]
         probability, sentiment = estimate_sentiment(headlines)
 
-        df['sentiment_score'] = probability
+        df['sentiment_score'] = probability # Is this only a positive value? Check on this...
         df = df.dropna()
 
         # Build feature matrix
@@ -91,17 +91,17 @@ class MLTrader(Strategy):
         pred_prob = self.model.predict(input_seq)[0][0]
         prediction = int(pred_prob > 0.5)
 
-        return prediction, sentiment, probability
+        return prediction
 
     def on_trading_iteration(self):
         cash, last_price, quantity = self.position_sizing()
-        prediction, sentiment, probability = self.get_prediction_and_sentiment()
+        prediction = self.get_prediction()
 
         if prediction is None:
             return
 
         if cash > last_price:
-            if prediction == 1 or (sentiment == "positive" and probability > 0.75):
+            if prediction == 1:
                 if self.last_trade == "sell":
                     self.sell_all()
                 order = self.create_order(
@@ -115,7 +115,7 @@ class MLTrader(Strategy):
                 self.submit_order(order)
                 self.last_trade = "buy"
 
-            elif prediction == 0 or (sentiment == "negative" and probability > 0.75):
+            elif prediction == 0:
                 if self.last_trade == "buy":
                     self.sell_all()
                 order = self.create_order(
@@ -131,7 +131,7 @@ class MLTrader(Strategy):
 
 # Backtest parameters
 start_date = datetime(2025, 1, 1)
-end_date = datetime(2025, 3, 1)
+end_date = datetime(2025, 4, 1)
 broker = Alpaca(ALPACA_CREDS)
 
 strategy = MLTrader(
