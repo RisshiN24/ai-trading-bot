@@ -34,7 +34,7 @@ def calculate_rsi(data, window=14):
 
 def train_model():
 
-    start_date = '2023-01-01'
+    start_date = '2024-01-01'
     end_date = '2025-01-01'
 
     # Fetch bars
@@ -48,7 +48,6 @@ def train_model():
     df['MACD Line'] = df['close'].ewm(span=12).mean() - df['close'].ewm(span=26).mean()
     df['RSI'] = calculate_rsi(df)
     df['price_to_ema'] = df['close'] / df['200EMA']
-    df['price_minus_ema'] = df['close'] - df['200EMA']
     df['ema_slope'] = df['200EMA'].diff()
 
     # Pull sentiment using real headlines from Alpaca API
@@ -71,7 +70,7 @@ def train_model():
     df = df.dropna()
 
     # Split features and target
-    features = ['price_change', 'MACD Line', 'RSI', 'price_to_ema', 'price_minus_ema', 'ema_slope', 'sentiment_score']
+    features = ['price_change', 'MACD Line', 'RSI', 'price_to_ema', 'ema_slope', 'sentiment_score']
     X = df[features].values
     y = df['target'].values
 
@@ -104,15 +103,28 @@ def train_model():
         if fold == 1:
             joblib.dump(scaler, f'scaler_fold_{fold}.pkl')
 
+        # Build model
         model = Sequential()
         model.add(LSTM(64, input_shape=(X_train_scaled.shape[1], X_train_scaled.shape[2]), return_sequences=False))
         model.add(Dropout(0.3))
         model.add(Dense(1, activation='sigmoid'))
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
+        # Save best model
         checkpoint = ModelCheckpoint(f'model_fold_{fold}.keras', monitor='val_accuracy', save_best_only=True, mode='max', verbose=1)
-        model.fit(X_train_scaled, y_train, validation_data=(X_test_scaled, y_test), epochs=50, batch_size=32, callbacks=[checkpoint], verbose=0)
+        
+        # Fit the model
+        model.fit(
+            X_train_scaled,         # Training input sequences
+            y_train,                # Training labels
+            validation_data=(X_test_scaled, y_test),  # Validation set
+            epochs=10,              # Number of full passes through the training set
+            batch_size=32,          # Number of samples per gradient update
+            callbacks=[checkpoint],# Save best model based on val_accuracy
+            verbose=0               # Silent mode — change to 1 if you want logs per epoch
+)
 
+        # Evaluate the model
         best_model = load_model(f'model_fold_{fold}.keras')
         y_pred = (best_model.predict(X_test_scaled) > 0.5).astype(int)
         accuracy = np.mean(y_pred.flatten() == y_test)
@@ -120,6 +132,7 @@ def train_model():
         print(f'Fold {fold} Accuracy: {accuracy:.2f}')
         fold += 1
 
+    # Print average cross-validated accuracy
     print(f'Average Cross-Validated Accuracy: {np.mean(accuracies):.2f}')
 
 if __name__ == "__main__":
