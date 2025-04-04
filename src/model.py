@@ -11,6 +11,7 @@ from sklearn.model_selection import KFold
 from keras.callbacks import ModelCheckpoint
 from dotenv import load_dotenv
 from finbert_utils import estimate_sentiment
+import joblib
 
 load_dotenv()
 
@@ -66,49 +67,54 @@ def train_model():
     df['future_price'] = df['close'].shift(-1)
     df['target'] = (df['future_price'] > df['close']).astype(int)
 
-    # Drop NaNs
+    # Drop rows with missing values
     df = df.dropna()
 
-    # Features including sentiment
+    # Split features and target
     features = ['price_change', 'MACD Line', 'RSI', 'price_to_ema', 'price_minus_ema', 'ema_slope', 'sentiment_score']
     X = df[features].values
     y = df['target'].values
 
-    # Scale features
-    scaler = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    # Create sequences for LSTM
-    sequence_length = 20
-    X_seq, y_seq = [], []
-    for i in range(len(X_scaled) - sequence_length):
-        X_seq.append(X_scaled[i:i+sequence_length])
+    # Create sequences first (for LSTM)
+    sequence_length = 10
+    X_seq_raw, y_seq = [], []
+    for i in range(len(X) - sequence_length):
+        X_seq_raw.append(X[i:i+sequence_length])
         y_seq.append(y[i+sequence_length])
-    X_seq, y_seq = np.array(X_seq), np.array(y_seq)
+    X_seq_raw = np.array(X_seq_raw)
+    y_seq = np.array(y_seq)
 
     # K-Fold Cross-Validation
     kf = KFold(n_splits=5, shuffle=False)
     fold = 1
     accuracies = []
 
-    for train_index, test_index in kf.split(X_seq):
+    for train_index, test_index in kf.split(X_seq_raw):
         print(f"Training Fold {fold}...")
-        X_train, X_test = X_seq[train_index], X_seq[test_index]
+
+        X_train_raw, X_test_raw = X_seq_raw[train_index], X_seq_raw[test_index]
         y_train, y_test = y_seq[train_index], y_seq[test_index]
 
+        # Fit scaler only on train
+        scaler = MinMaxScaler()
+        X_train_scaled = np.array([scaler.fit_transform(x) for x in X_train_raw])
+        X_test_scaled = np.array([scaler.transform(x) for x in X_test_raw])
+
+        # Save scaler for Fold 1 (or best performing fold)
+        if fold == 1:
+            joblib.dump(scaler, f'scaler_fold_{fold}.pkl')
+
         model = Sequential()
-        model.add(LSTM(64, input_shape=(X_train.shape[1], X_train.shape[2]), return_sequences=False))
+        model.add(LSTM(64, input_shape=(X_train_scaled.shape[1], X_train_scaled.shape[2]), return_sequences=False))
         model.add(Dropout(0.3))
         model.add(Dense(1, activation='sigmoid'))
-
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
         checkpoint = ModelCheckpoint(f'model_fold_{fold}.keras', monitor='val_accuracy', save_best_only=True, mode='max', verbose=1)
+        model.fit(X_train_scaled, y_train, validation_data=(X_test_scaled, y_test), epochs=50, batch_size=32, callbacks=[checkpoint], verbose=0)
 
-        model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, batch_size=32, callbacks=[checkpoint], verbose=0)
         best_model = load_model(f'model_fold_{fold}.keras')
-
-        y_pred = (best_model.predict(X_test) > 0.5).astype(int)
+        y_pred = (best_model.predict(X_test_scaled) > 0.5).astype(int)
         accuracy = np.mean(y_pred.flatten() == y_test)
         accuracies.append(accuracy)
         print(f'Fold {fold} Accuracy: {accuracy:.2f}')

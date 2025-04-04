@@ -15,6 +15,7 @@ from timedelta import Timedelta
 from tensorflow.keras.models import load_model
 from model import calculate_rsi
 from finbert_utils import estimate_sentiment
+from joblib import load
 
 # Load environment variables
 load_dotenv()
@@ -31,11 +32,11 @@ ALPACA_CREDS = {
 }
 
 class MLTrader(Strategy):
-    def initialize(self, symbol="SPY", cash_at_risk=0.5, model_path="model_fold_1.keras"):
+    def initialize(self, symbol="SPY", cash_at_risk=0.5, model_path="model_fold_1.keras", scaler_path="scaler_fold_1.pkl"):
         self.symbol = symbol
         self.cash_at_risk = cash_at_risk
         self.model = load_model(model_path)
-        self.scaler = MinMaxScaler()
+        self.scaler = load(scaler_path) # Use joblib to import the scaler from model.py
         self.sleeptime = "24H"
         self.last_trade = None
         self.api = REST(base_url=ALPACA_BASE_URL, key_id=ALPACA_API_KEY, secret_key=ALPACA_API_SECRET)
@@ -79,7 +80,7 @@ class MLTrader(Strategy):
         # Build feature matrix
         features = ['price_change', 'MACD Line', 'RSI', 'price_to_ema', 'price_minus_ema', 'ema_slope', 'sentiment_score']
         X = df[features].values
-        X_scaled = self.scaler.fit_transform(X)
+        X_scaled = self.scaler.transform(X)
 
         # Sequence input for LSTM
         sequence_length = 20
