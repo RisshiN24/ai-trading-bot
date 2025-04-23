@@ -60,7 +60,7 @@ def get_training_data(start_date="2017-01-01", end_date="2023-12-31", ticker="AA
     df = df.dropna()
 
     # Create X and y
-    X = df[['close', 'MACD_line', 'RSI', 'ATR_14', 'BB_upper', 'BB_lower', 'OBV']].values
+    X = df[['close', 'MACD_line', 'RSI', 'ATR_14', 'BB_upper', 'BB_lower', 'volume']].values
     y = df['target'].astype(int).values
 
     # Make sequences

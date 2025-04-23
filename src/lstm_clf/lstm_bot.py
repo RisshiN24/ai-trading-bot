@@ -47,7 +47,7 @@ class MLTrader(Strategy):
         cash = self.get_cash()
         price = self.get_last_price(self.symbol)
         qty = round(cash * self.cash_at_risk / price, 0) # Calculate position size
-        return cash, price, qty 
+        return cash, price, qty   
 
     def get_dates(self):
         yday = self.get_datetime() - Timedelta(days=1)
