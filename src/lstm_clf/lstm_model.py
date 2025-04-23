@@ -7,6 +7,7 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+import yfinance as yf
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, load_model # type: ignore
@@ -43,10 +44,12 @@ def make_sequences(X, y, sequence_length=20):
     return np.array(X_seq), np.array(y_seq)
 
 # Get training data
-def get_training_data(start_date="2017-01-01", end_date="2023-12-31", ticker="AAPL", sequence_length=20):
-    bars = api.get_bars(ticker, '1D', limit=10000, start=start_date, end=end_date)
-    # Convert bars to DataFrame
-    df = pd.DataFrame([{ 'time': b.t, 'open': b.o, 'high': b.h, 'low': b.l, 'close': b.c, 'volume': b.v } for b in bars])
+def get_training_data(start_date="2014-01-01", end_date="2024-01-01", ticker="AAPL", sequence_length=20):
+    
+    # Pull historical OHLCV bars
+    df = yf.download(tickers=ticker, start=start_date, end=end_date, interval='1d')
+    df = df.xs(ticker, axis=1, level='Ticker') # Drop ticker level
+    df.columns = df.columns.str.lower() # Lowercase column names
 
     # Feature engineering
     df = add_all_indicators(df)
@@ -137,7 +140,7 @@ def train_model(conv_filters=16, lstm_units=16, sequence_length=20, epochs=100, 
     # Compile model
     model.compile(
         optimizer='adam', 
-        loss=focal_loss, # Use focal loss
+        # loss=focal_loss, # Use focal loss
         metrics=[
             'accuracy', 
             AUC(curve='PR', name='pr_auc') # Log Precision-Recall AUC
