@@ -1,0 +1,16 @@
+/.venv
+/logs
+/src/logs
+/src/lstm_clf/__pycache__
+/src/lstm_clf/logs
+/src/lstm_clf/wandb
+/src/sent_bot/__pycache__
+/src/sent_bot/logs
+/src/rb_bot/logs
+/src/xgb_clf/__pycache__
+/src/xgb_clf/logs
+/src/lstm_reg/
+.env
+/src/wandb
+*.keras
+*.pkl
