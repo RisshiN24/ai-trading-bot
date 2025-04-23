@@ -140,7 +140,7 @@ def train_model(conv_filters=16, lstm_units=16, sequence_length=20, epochs=100, 
     # Compile model
     model.compile(
         optimizer='adam', 
-        # loss=focal_loss, # Use focal loss
+        loss=focal_loss, # Use focal loss
         metrics=[
             'accuracy', 
             AUC(curve='PR', name='pr_auc') # Log Precision-Recall AUC
