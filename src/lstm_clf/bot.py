@@ -33,7 +33,7 @@ ALPACA_CREDS = {
 # Deep learning trading strategy
 class MLTrader(Strategy):
     # Initialize the strategy
-    def initialize(self, symbol="AAPL", cash_at_risk=1, model_path="model.keras", scaler_path="scaler.pkl", best_threshold_path="best_threshold.pkl"):
+    def initialize(self, symbol="SPY", cash_at_risk=1, model_path="model.keras", scaler_path="scaler.pkl", best_threshold_path="best_threshold.pkl"):
         self.symbol = symbol
         self.cash_at_risk = cash_at_risk
         self.model = load_model(model_path, custom_objects={"focal_loss": focal_loss})

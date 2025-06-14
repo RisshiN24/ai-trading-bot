@@ -25,16 +25,6 @@ from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
 from alpaca_trade_api import REST
 from indicators import add_all_indicators
 
-# Load environment variables
-load_dotenv()
-
-ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
-ALPACA_API_SECRET = os.getenv("ALPACA_API_SECRET")
-ALPACA_BASE_URL = "https://paper-api.alpaca.markets/v2"
-
-# Initialize Alpaca API
-api = REST(base_url=ALPACA_BASE_URL, key_id=ALPACA_API_KEY, secret_key=ALPACA_API_SECRET)
-
 # Make sequences of specified length
 def make_sequences(X, y, sequence_length=20):
     X_seq, y_seq = [], []
@@ -44,51 +34,12 @@ def make_sequences(X, y, sequence_length=20):
     return np.array(X_seq), np.array(y_seq)
 
 # Get training data
-def get_training_data(start_date="2014-01-01", end_date="2024-01-01", ticker="AAPL", sequence_length=20, target_return_threshold=0.01, future_days=3):
-    
-    # Pull historical OHLCV bars from Alpaca with retry logic
-    max_retries = 3
-    retry_delay = 60  # seconds
-    
-    for attempt in range(max_retries):
-        try:
-            print(f"Downloading {ticker} data from {start_date} to {end_date} (attempt {attempt + 1}/{max_retries})")
-            
-            # Get bars from Alpaca
-            bars = api.get_bars(ticker, '1D', start=start_date, end=end_date)
-            
-            # Convert to DataFrame
-            df = pd.DataFrame([{
-                'time': b.t,
-                'open': b.o,
-                'high': b.h,
-                'low': b.l,
-                'close': b.c,
-                'volume': b.v
-            } for b in bars])
-            
-            # Check if download was successful
-            if df.empty:
-                raise ValueError(f"No data returned for {ticker}")
-            
-            # Set time as index and sort
-            df['time'] = pd.to_datetime(df['time'])
-            df.set_index('time', inplace=True)
-            df.sort_index(inplace=True)
-            
-            print(f"Successfully downloaded {len(df)} rows of data for {ticker}")
-            print(f"Date range: {df.index.min()} to {df.index.max()}")
-            break
-            
-        except Exception as e:
-            print(f"Error downloading data (attempt {attempt + 1}/{max_retries}): {e}")
-            if attempt < max_retries - 1:
-                print(f"Waiting {retry_delay} seconds before retry...")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            else:
-                print("All download attempts failed. Please check your Alpaca credentials and try again.")
-                raise e
+def get_training_data(sequence_length=20, target_return_threshold=0.01, future_days=3):
+    df = pd.read_csv("spy.csv")
+    df = df.rename(columns={"Date": "date", "Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"})
+    df['date'] = pd.to_datetime(df['date'])
+    df.set_index('date', inplace=True)
+    df.sort_index(inplace=True)
 
     # Feature engineering
     df = add_all_indicators(df)
@@ -166,9 +117,6 @@ def train_model(
     min_lr=1e-6,
     
     # Data Parameters
-    ticker="SPY",
-    start_date="2020-01-01",
-    end_date="2025-01-01",
     target_return_threshold=0.01,
     future_days=3
 ):
@@ -206,22 +154,16 @@ def train_model(
             "min_lr": min_lr,
             
             # Data Parameters
-            "ticker": ticker,
-            "start_date": start_date,
-            "end_date": end_date,
             "target_return_threshold": target_return_threshold,
             "future_days": future_days,
             
             "architecture": f"Conv+{num_lstm_layers}xLSTM"
         },
-        name=f"Conv{conv_filters}-{num_lstm_layers}xLSTM{lstm_units}-seq{sequence_length}-bs{batch_size}-ep{epochs}-{ticker}"
+        name=f"Conv{conv_filters}-{num_lstm_layers}xLSTM{lstm_units}-seq{sequence_length}-bs{batch_size}-ep{epochs}"
     )
 
     # Get data
     X_seq, y_seq = get_training_data(
-        start_date=start_date,
-        end_date=end_date,
-        ticker=ticker,
         sequence_length=sequence_length,
         target_return_threshold=target_return_threshold,
         future_days=future_days
@@ -358,7 +300,7 @@ def train_model(
     plt.xlabel("Predicted Probability (Up)")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.show()
+    wandb.log({"prediction_confidence_distribution": wandb.Image(plt.gcf())})
 
     # Conclude experiment
     wandb.finish()
