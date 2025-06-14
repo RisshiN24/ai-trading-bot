@@ -13,7 +13,7 @@ from lumibot.strategies.strategy import Strategy
 from timedelta import Timedelta
 
 from tensorflow.keras.models import load_model  # type: ignore
-from lstm_model import focal_loss
+from lstm_clf.model import focal_loss
 from indicators import add_all_indicators
 from joblib import load
 
